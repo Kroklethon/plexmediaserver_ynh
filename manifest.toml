@@ -1,0 +1,51 @@
+#:schema https://raw.githubusercontent.com/YunoHost/apps/master/schemas/manifest.v2.schema.json
+
+packaging_format = 2
+
+id = "plexmediaserver"
+name = "PlexMediaServer"
+description.en = "PlexMediaServer package for YunoHost"
+description.fr = "PlexMediaServer pour YunoHost"
+
+version = "2.0~ynh1"
+
+maintainers = ["liberodark", "UnicodeApocalypse"]
+
+[upstream]
+license = "non-free"
+website = "http://plex.tv/"
+userdoc = "https://support.plex.tv/articles/"
+
+[integration]
+yunohost = ">= 11.1.15"
+architectures = "all"
+multi_instance = false
+ldap = false
+sso = false
+
+[install]
+    [install.domain]
+    type = "domain"
+
+    [install.path]
+    type = "path"
+    default = "/web"
+
+    [install.admin]
+    type = "user"
+
+    [install.is_public]
+    help.en = "Should Plex be publicly accessible?"
+    help.fr = "Plex doit-il être publiquement accessible ?"
+    type = "boolean"
+    default = false
+
+[resources]
+    [resources.apt]
+    packages = ["jq"]
+    
+    [resources.permissions]
+    main.url = "/"
+
+    [resources.ports]
+    main.default = 32400

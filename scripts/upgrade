@@ -17,22 +17,47 @@ systemctl stop plexmediaserver
 # DOWNLOAD, CHECK AND UNPACK SOURCE
 #=================================================
 
-ynh_app_setting_set "$app" final_path "$final_path"
+# Get the machine architecture
+arch=$(uname -m)
 
-# Download, check integrity, uncompress and patch the source from app-[arch].src
-case $(uname -m) in
-    i386) ynh_setup_source "$final_path" "app-i386" ;;
-    x86_64) ynh_setup_source "$final_path" "app-amd64" ;;
-    aarch64) ynh_setup_source "$final_path" "app-arm64" ;;
-    armv7l) ynh_setup_source "$final_path" "app-armhf" ;;
-    *) ynh_die "Unknown arch" ;;
-esac
+# Check the architecture and set variable accordingly
+if [ "$arch" = "x86_64" ]; then
+  BUILD="linux-x86_64"
+elif [ "$arch" = "i386" ]; then
+  BUILD="linux-x86"
+elif [ "$arch" = "aarch64" ]; then
+  BUILD="linux-aarch64"
+elif [ "$arch" = "armv7l" ]; then
+  BUILD="linux-armv7neon"
+else
+    ynh_die "Your arch doesn't have a debian-compatible Plex release"
+fi
+
+# Fetch releases from Plex
+PLEX_INDEX=$(curl -s https://plex.tv/pms/downloads/5.json);
+SOURCE_URL=$(echo $PLEX_INDEX | jq -r ".computer.Linux.releases[]  | select(.distro == \"debian\" and .build == \"$BUILD\") | .url");
+DEB_FILE="$final_path/plexmediaserver.deb";
+
+ynh_script_progression --message="Downloading PlexMediaManager..."
+ynh_app_setting_set "$app" final_path "$final_path"
+mkdir -p "$final_path"
+wget --tries 3 --no-dns-cache --timeout 900 --no-verbose --output-document=$DEB_FILE $SOURCE_URL 2>&1
+
+# Verifying checksum
+SOURCE_SUM=$(echo $PLEX_INDEX | jq -r ".computer.Linux.releases[]  | select(.distro == \"debian\" and .build == \"$BUILD\") | .checksum");
+ACTUAL_SUM=$(sha1sum $DEB_FILE | cut -c 1-40)
+
+if [ "$SOURCE_SUM" != "$ACTUAL_SUM" ]
+then
+  rm -f "$DEB_FILE"
+  ynh_die --message="Download file have incorrect checksum. Aborting."
+fi
 
 #==============================================
 # INSTALL PLEX
 #==============================================
 
-dpkg --install "$final_path"/plexmediaserver*
+dpkg --install $DEB_FILE
 
 #=================================================
 # NGINX CONFIGURATION
